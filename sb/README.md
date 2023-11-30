@@ -2,7 +2,7 @@ sb - statusbar
 ==============
 Asynchronous modular status bar for dwm written in C99
 
-![image](/sb.png)
+![image](sb.png)
 
 Notes
 -----
