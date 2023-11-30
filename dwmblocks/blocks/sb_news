@@ -1,0 +1,3 @@
+#!/bin/sh
+NEWS=$(newsboat -x print-unread | awk '{ if($1>0) print "📰 " $1}')
+printf '%s\n' "$NEWS"

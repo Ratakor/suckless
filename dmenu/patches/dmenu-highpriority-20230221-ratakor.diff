@@ -1,0 +1,152 @@
+From 572cffbc38664ee4ad845ff946a04e6a1e0dd4cc Mon Sep 17 00:00:00 2001
+From: Ratakor <contact@ratakor.com>
+Date: Tue, 21 Feb 2023 16:33:24 +0100
+Subject: [PATCH] highpriority: remove color changes and update for 5.2
+
+---
+ dmenu.c | 64 ++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 59 insertions(+), 5 deletions(-)
+
+diff --git a/dmenu.c b/dmenu.c
+index 27b7a30..5546757 100644
+--- a/dmenu.c
++++ b/dmenu.c
+@@ -31,9 +31,11 @@ enum { SchemeNorm, SchemeSel, SchemeOut, SchemeLast }; /* color schemes */
+ struct item {
+ 	char *text;
+ 	struct item *left, *right;
+-	int out;
++	int out, hp;
+ };
+ 
++static char **hpitems = NULL;
++static int hplength = 0;
+ static char text[BUFSIZ] = "";
+ static char *embed;
+ static int bh, mw, mh;
+@@ -58,6 +60,42 @@ static Clr *scheme[SchemeLast];
+ static int (*fstrncmp)(const char *, const char *, size_t) = strncmp;
+ static char *(*fstrstr)(const char *, const char *) = strstr;
+ 
++static char **
++tokenize(char *source, const char *delim, int *llen)
++{
++	int listlength = 0, list_size = 0;
++	char **list = NULL, *token;
++
++	token = strtok(source, delim);
++	while (token) {
++		if (listlength + 1 >= list_size) {
++			if (!(list = realloc(list, (list_size += 8) * sizeof(*list))))
++				die("Unable to realloc %zu bytes\n", list_size * sizeof(*list));
++		}
++		if (!(list[listlength] = strdup(token)))
++			die("Unable to strdup %zu bytes\n", strlen(token) + 1);
++		token = strtok(NULL, delim);
++		listlength++;
++	}
++
++	*llen = listlength;
++	return list;
++}
++
++static int
++arrayhas(char **list, int length, char *item)
++{
++	int i;
++
++	for (i = 0; i < length; i++) {
++		size_t len1 = strlen(list[i]);
++		size_t len2 = strlen(item);
++		if (!fstrncmp(list[i], item, len1 > len2 ? len2 : len1))
++			return 1;
++	}
++	return 0;
++}
++
+ static unsigned int
+ textw_clamp(const char *str, unsigned int n)
+ {
+@@ -104,6 +142,9 @@ cleanup(void)
+ 	XUngrabKey(dpy, AnyKey, AnyModifier, root);
+ 	for (i = 0; i < SchemeLast; i++)
+ 		free(scheme[i]);
++	for (i = 0; i < hplength; ++i)
++		free(hpitems[i]);
++	free(hpitems);
+ 	for (i = 0; items && items[i].text; ++i)
+ 		free(items[i].text);
+ 	free(items);
+@@ -236,7 +277,7 @@ match(void)
+ 	char buf[sizeof text], *s;
+ 	int i, tokc = 0;
+ 	size_t len, textsize;
+-	struct item *item, *lprefix, *lsubstr, *prefixend, *substrend;
++	struct item *item, *lhpprefix, *lprefix, *lsubstr, *hpprefixend, *prefixend, *substrend;
+ 
+ 	strcpy(buf, text);
+ 	/* separate input text into tokens to be matched individually */
+@@ -245,7 +286,7 @@ match(void)
+ 			die("cannot realloc %zu bytes:", tokn * sizeof *tokv);
+ 	len = tokc ? strlen(tokv[0]) : 0;
+ 
+-	matches = lprefix = lsubstr = matchend = prefixend = substrend = NULL;
++	matches = lhpprefix = lprefix = lsubstr = matchend = hpprefixend = prefixend = substrend = NULL;
+ 	textsize = strlen(text) + 1;
+ 	for (item = items; item && item->text; item++) {
+ 		for (i = 0; i < tokc; i++)
+@@ -253,14 +294,24 @@ match(void)
+ 				break;
+ 		if (i != tokc) /* not all tokens match */
+ 			continue;
+-		/* exact matches go first, then prefixes, then substrings */
++		/* exact matches go first, then prefixes with high priority, then prefixes, then substrings */
+ 		if (!tokc || !fstrncmp(text, item->text, textsize))
+ 			appenditem(item, &matches, &matchend);
++		else if (item->hp && !fstrncmp(tokv[0], item->text, len))
++			appenditem(item, &lhpprefix, &hpprefixend);
+ 		else if (!fstrncmp(tokv[0], item->text, len))
+ 			appenditem(item, &lprefix, &prefixend);
+ 		else
+ 			appenditem(item, &lsubstr, &substrend);
+ 	}
++	if (lhpprefix) {
++		if (matches) {
++			matchend->right = lhpprefix;
++			lhpprefix->left = matchend;
++		} else
++			matches = lhpprefix;
++		matchend = hpprefixend;
++	}
+ 	if (lprefix) {
+ 		if (matches) {
+ 			matchend->right = lprefix;
+@@ -564,6 +615,7 @@ readstdin(void)
+ 			line[len - 1] = '\0';
+ 		items[i].text = line;
+ 		items[i].out = 0;
++		items[i].hp = arrayhas(hpitems, hplength, items[i].text);
+ 		line = NULL; /* next call of getline() allocates a new line */
+ 	}
+ 	free(line);
+@@ -714,7 +766,7 @@ setup(void)
+ static void
+ usage(void)
+ {
+-	die("usage: dmenu [-bfiv] [-l lines] [-p prompt] [-fn font] [-m monitor]\n"
++	die("usage: dmenu [-bfiv] [-l lines] [-p prompt] [-fn font] [-m monitor] [-hp items]\n"
+ 	    "             [-nb color] [-nf color] [-sb color] [-sf color] [-w windowid]");
+ }
+ 
+@@ -757,6 +809,8 @@ main(int argc, char *argv[])
+ 			colors[SchemeSel][ColFg] = argv[++i];
+ 		else if (!strcmp(argv[i], "-w"))   /* embedding window id */
+ 			embed = argv[++i];
++		else if (!strcmp(argv[i], "-hp"))
++			hpitems = tokenize(argv[++i], ",", &hplength);
+ 		else
+ 			usage();
+ 
+-- 
+2.39.2
+

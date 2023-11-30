@@ -1,0 +1,222 @@
+#!/bin/sh
+# Copywrong © 2023 Ratakor. Under ISC License.
+# plumber 🪠
+# dependencies:
+#   - default programs
+#   - xdo
+#   - xclip or xsel
+#   - (optional) herbe and dmenusearch web
+#   - (optional) dmenu_path
+#   - (optional) st with plumber patch
+# shellcheck disable=SC2086
+
+# default programs
+WEB="xdg-open"
+TEXT="$TERMINAL -e $EDITOR"
+VIDEO="mpv --ytdl-format=bv+ba --loop"
+AUDIO="music --shuffle"
+PIC="nsxiv -a"
+DOC="zathura"
+DIR="$TERMINAL -e lfub"
+
+HISTDIR=${XDG_STATE_HOME:-$HOME/.local/state}/plumber
+HISTFILE=$HISTDIR/history
+
+openlink() {
+	case "$1" in
+	*.mkv|*.webm|*.mp4|*.mov|*youtube.com/watch*|*youtube.com/playlist*|\
+		*youtube.com/shorts*|*youtu.be*|*inv*/playlist*|*inv*/watch*)
+		setsid -f $VIDEO "$1" >/dev/null 2>&1 ;;
+	*.mp3|*.flac|*.opus|*mp3?source*|*.ogg|*.wav|*soundcloud.com*)
+		setsid -f $AUDIO "$1" >/dev/null 2>&1 ;;
+	*.png|*.jpg|*.jpeg|*.gif|*.webp|*.bmp)
+		file=$(printf '%s' "$1" | sed "s/.*\///;s/%20/ /g")
+		curl -sL "$1" > "/tmp/$file" &&
+			$PIC "/tmp/$file" >/dev/null 2>&1 & ;;
+	*.pdf|*.ps|*.cbz|*.cbr|*.djvu|*.epub)
+		file=$(printf '%s' "$1" | sed "s/.*\///;s/%20/ /g")
+		curl -sL "$1" > "/tmp/$file" &&
+			$DOC "/tmp/$file" >/dev/null 2>&1 & ;;
+	*wp.com/stonetoss.com*)
+		file=$(printf '%s' "${1%"?resize=150%2C150&ssl=1"}" |\
+			sed "s/.*\///;s/%20/ /g")
+		curl -sL "${1%"?resize=150%2C150&ssl=1"}" > "/tmp/$file" &&
+			$PIC "/tmp/$file" >/dev/null 2>&1 & ;;
+	git://*|git@*|*.git)
+		"$TERMINAL" -e git clone "$1" ;;
+	*)
+		setsid -f $WEB "$1" >/dev/null 2>&1 ;;
+	esac
+}
+
+openfile() {
+	if [ -d "$1" ]; then
+		setsid -f $DIR "$1" >/dev/null 2>&1
+		return
+	fi
+
+	if [ ! -f "$1" ]; then
+		printf '\033[31mError:\033[m %s is not a valid file\n' "$1" >&2
+		return 1
+	fi
+
+	case "$1" in
+	*.mkv|*.webm|*.mp4|*.mov)
+		setsid -f $VIDEO "$1" >/dev/null 2>&1 ;;
+	*.mp3|*.flac|*.opus|*.ogg|*.wav)
+		setsid -f $AUDIO "$1" >/dev/null 2>&1 ;;
+	*.png|*.jpg|*.jpeg|*.gif|*.webp|*.bmp)
+		setsid -f $PIC "$1" >/dev/null 2>&1 ;;
+	*.pdf|*.ps|*.cbz|*.cbr|*.djvu|*.epub)
+		setsid -f $DOC "$1" >/dev/null 2>&1 ;;
+	*)
+		setsid -f $TEXT "$1" >/dev/null 2>&1 ;;
+	esac
+}
+
+checksel() {
+	case "$1" in
+	http://*|https://*|irc://*|ircs://*|git://*|git@*)
+		openlink "$1" ;;
+	/*)
+		opensel "$1" "$1" ;;
+
+	*)
+		pid=$(pstree -lpA "$(xdo pid)" | tail -n 1 |\
+			awk -F '---' '{print $NF}' | sed -re 's/[^0-9]//g')
+		opensel "$(readlink "/proc/$pid/cwd")/$1" "$1" ;;
+	esac
+}
+
+opensel() {
+	if [ -d "$1" ]; then
+		case $1 in
+		"${XDG_MUSIC_DIR:-$HOME/Music}"/*)
+			setsid -f $AUDIO "$1" >/dev/null 2>&1 ;;
+		*)
+			xdo kill
+			$TERMINAL -e sh -c "cd $1; $SHELL" ;;
+		esac
+		return
+	fi
+
+	if [ ! -f "$1" ]; then
+		progname=${2%\ *}
+		for prog in $(dmenu_path); do
+			case $prog in
+			"$progname")
+				$TERMINAL -e sh -c\
+					"cd ${1%"$2"}; echo \$ $2; $2; $SHELL"
+				return ;;
+			esac
+		done
+		herbe "Do you want to search for '$2' ?" && dmenusearch web "$2"
+		return
+	fi
+
+	case "$1" in
+	*.mkv|*.webm|*.mp4|*.mov)
+		setsid -f $VIDEO "$1" >/dev/null 2>&1 ;;
+	*.mp3|*.flac|*.opus|*.ogg|*.wav)
+		setsid -f $AUDIO "$1" >/dev/null 2>&1 ;;
+	*.png|*.jpg|*.jpeg|*.gif|*.webp|*.bmp)
+		setsid -f $PIC "$1" >/dev/null 2>&1 ;;
+	*.pdf|*.ps|*.cbz|*.cbr|*.djvu|*.epub)
+		setsid -f $DOC "$1" >/dev/null 2>&1 ;;
+	*)
+		pid=$(xdo pid)
+		xdo hide -p "$pid"
+		$TEXT "$1" >/dev/null 2>&1
+		xdo show -p "$pid" ;;
+	esac
+}
+
+
+usage() {
+	cat << EOF >&2
+Usage: ${0##*/} [options] [args]
+
+Options:
+  no option [args]    | Try to guess what to do
+  -l|--link [links]   | Open the links
+  -f|--file [files]   | Open the files or the folders
+  -s|--sel            | Use the selection buffer instead, Plan9's way
+  -t|--term           | To be used only when invoking through a patched st
+  -h|--help           │ Print this help message
+
+Config:
+  browser      = $WEB
+  editor       = $TEXT
+  video        = $VIDEO
+  audio        = $AUDIO
+  picture      = $PIC
+  document     = $DOC
+  file manager = $DIR
+EOF
+}
+
+main() {
+	mkdir -p "$HISTDIR"
+	case "$1" in
+	-l|--link)
+		shift
+		if [ -z "$1" ]; then
+			printf '\033[31mError:\033[m no argument given\n' >&2
+			usage
+			return 1
+		fi
+		for arg in "$@"; do
+			printf '%s\n' "$arg" >> "$HISTFILE"
+			openlink "$arg"
+		done ;;
+	-f|--file)
+		shift
+		if [ -z "$1" ]; then
+			printf '\033[31mError:\033[m no argument given\n' >&2
+			usage
+			return 1
+		fi
+		for arg in "$@"; do
+			printf '%s\n' "$arg" >> "$HISTFILE"
+			openfile "$arg"
+		done ;;
+	-s|--sel|'')
+		sel=$(xclip -o 2>/dev/null || xsel -opn 2>/dev/null)
+		sel=${sel#"${sel%%[![:space:]]*}"}
+
+		# clear clipboard
+		true | xclip 2>/dev/null || true | xsel 2>/dev/null
+
+		if [ -z "$sel" ]; then
+			printf '\033[31mError:\033[m selection buffer is empty\n' >&2
+			usage
+			return 1
+		fi
+		printf '%s\n' "$sel" >> "$HISTFILE"
+		checksel "$sel" ;;
+	-t|--term)
+		#if [ "$(ps -o comm= $PPID)" != "st" ]; then
+		#	printf '\033[31mError:\033[m --term option used outside of st\n' >&2
+		#	usage
+		#	return 1
+		#fi
+		[ -n "$2" ] && checksel "$2" ;;
+	-h|--help)
+		usage ;;
+	-*)
+		printf '\033[31mError:\033[m unknown option\n' >&2
+		usage
+		return 1 ;;
+	*)
+		for arg in "$@"; do
+			case "$arg" in
+			http://*|https://*|git://*|irc://*|ircs://*)
+				openlink "$arg" ;;
+			*)
+				openfile "$arg" ;;
+			esac
+		done
+	esac
+}
+
+main "$@"

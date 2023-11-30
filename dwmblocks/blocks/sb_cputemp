@@ -1,0 +1,7 @@
+#!/bin/sh
+ICON=''
+FIRE=''
+TEMP="$(sensors | awk '/CPU/ {gsub("+", " "); gsub("\\..", " "); print $2}')"
+[ "$TEMP" -ge 70 ] &&
+	printf '\06%s %s°C\01\n' "$FIRE" "$TEMP" ||
+	printf '%s %s°C\n' "$ICON" "$TEMP"

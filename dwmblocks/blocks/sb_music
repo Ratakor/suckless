@@ -1,0 +1,20 @@
+#!/bin/sh
+[ $(pgrep music) ] 2> /dev/null && exit 1
+
+strip() {
+	tmp="${1##{\"data\":\"}"
+	printf '%s\n' "${tmp%%\",\"request_id\":0,\"error\":\"success\"\}}"
+}
+
+ICON_PAUSE=''
+ICON_PLAY=''
+PAUSE="$(strip "$(printf '{ "command": ["get_property_string", "pause"] }\n'\
+	| socat - /tmp/mpvsocket 2> /dev/null)")"
+TITLE="$(strip "$(printf '{ "command": ["get_property", "media-title"] }\n'\
+	| socat - /tmp/mpvsocket 2> /dev/null)")"
+
+if [ "$PAUSE" = "yes" ]; then
+	printf '%s %s\n' "$ICON_PAUSE" "$TITLE"
+elif [ "$PAUSE" = "no" ]; then
+	printf '%s %s\n' "$ICON_PLAY" "$TITLE"
+fi

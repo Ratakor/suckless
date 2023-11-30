@@ -1,0 +1,13 @@
+#!/bin/sh
+ICON=''
+H="$(date '+%H')"
+M="$(date '+%M')"
+
+case $H in
+2[2-3])
+	printf '\05%s %s:%s\01\n' "$ICON" "$H" "$M" ;;
+0[0-5])
+	printf '\06%s %s:%s\01\n' "$ICON" "$H" "$M" ;;
+*)
+	printf '%s %s:%s\n' "$ICON" "$H" "$M" ;;
+esac

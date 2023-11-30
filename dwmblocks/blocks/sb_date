@@ -1,0 +1,4 @@
+#!/bin/sh
+ICON=''
+DATE="$(date '+%b %d (%a)')"
+printf '%s %s\n' "$ICON" "$DATE"

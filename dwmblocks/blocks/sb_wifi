@@ -1,0 +1,13 @@
+#!/bin/sh
+WIFI_FULL_ICON='󰤨'
+WIFI_MID_ICON='󰤢'
+WIFI_LOW_ICON='󰤟'
+NO_WIFI_ICON='󰤯'
+PERCENTAGE="$(awk '/wlan0/ {printf "%d\n", int($3 * 100 / 70)}' /proc/net/wireless)"
+
+case $PERCENTAGE in
+100|9[0-9]|8[0-9]|7[0-9])     printf '%s\n' "$WIFI_FULL_ICON" ;;
+6[0-9]|5[0-9]|4[0-9]|3[0-9])  printf '%s\n'  "$WIFI_MID_ICON"  ;;
+2[0-9]|1[0-9]|[0-9])          printf '%s\n'  "$WIFI_LOW_ICON"  ;;
+*)                            printf '%s\n' "$NO_WIFI_ICON"   ;;
+esac

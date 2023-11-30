@@ -1,0 +1,36 @@
+From 85588b5d9b832c1c66d745e0ea097bcc3d83964a Mon Sep 17 00:00:00 2001
+From: Ratakor <ratakor@disroot.org>
+Date: Tue, 15 Aug 2023 14:33:12 +0200
+Subject: [PATCH] plumber patch
+
+---
+ x.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/x.c b/x.c
+index aa09997..c9b5ea3 100644
+--- a/x.c
++++ b/x.c
+@@ -471,6 +471,7 @@ bpress(XEvent *e)
+ 	int btn = e->xbutton.button;
+ 	struct timespec now;
+ 	int snap;
++	char *sel;
+ 
+ 	if (1 <= btn && btn <= 11)
+ 		buttons |= 1 << (btn-1);
+@@ -500,6 +501,11 @@ bpress(XEvent *e)
+ 		xsel.tclick1 = now;
+ 
+ 		selstart(evcol(e), evrow(e), snap);
++		if (snap == SNAP_WORD && (sel = getsel())) {
++			if (fork() == 0)
++				execlp("plumber", "plumber", "-t", sel);
++			free(sel);
++		}
+ 	}
+ }
+ 
+-- 
+2.41.0
+

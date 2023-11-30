@@ -1,0 +1,13 @@
+#!/bin/sh
+
+trimall() {
+	set -f
+	# shellcheck disable=SC2086,SC2048
+	set -- $*
+	printf '%s\n' "$*"
+	set +f
+}
+
+WEATHER="$(curl -s "wttr.in?format=1")"
+[ -z "$WEATHER" ] && exit 1 || WEATHER="$(trimall "$WEATHER")"
+printf '%s\n' "$WEATHER"

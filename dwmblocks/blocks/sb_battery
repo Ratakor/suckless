@@ -1,0 +1,60 @@
+#!/bin/sh
+CAPACITY="$(cat /sys/class/power_supply/BAT0/capacity)"
+STATUS="$(cat /sys/class/power_supply/BAT0/status)"
+
+BAT_0='󰂎'
+BAT_10='󰁺'
+BAT_20='󰁻'
+BAT_30='󰁼'
+BAT_40='󰁽'
+BAT_50='󰁾'
+BAT_60='󰁿'
+BAT_70='󰂀'
+BAT_80='󰂁'
+BAT_90='󰂂'
+BAT_100='󰁹'
+
+CBAT_0='󰢟'
+CBAT_10='󰢜'
+CBAT_20='󰂆'
+CBAT_30='󰂇'
+CBAT_40='󰂈'
+CBAT_50='󰢝'
+CBAT_60='󰂉'
+CBAT_70='󰢞'
+CBAT_80='󰂊'
+CBAT_90='󰂋'
+CBAT_100='󰂅'
+
+if [ "$STATUS" = "Charging" ]; then
+	case $CAPACITY in
+	99|100) printf '\07%s\04 %s%%\01\n' "$CBAT_100" "$CAPACITY"
+		notify-send "$CBAT_100 $CAPACITY% FULL" ;;
+	9[0-8])     printf '\07%s\04 %s%%\01\n' "$CBAT_90"  "$CAPACITY" ;;
+	8[0-9])     printf '\07%s\01 %s%%\n'    "$CBAT_80"  "$CAPACITY" ;;
+	7[0-9])     printf '\07%s\01 %s%%\n'    "$CBAT_70"  "$CAPACITY" ;;
+	6[0-9])     printf '\07%s\01 %s%%\n'    "$CBAT_60"  "$CAPACITY" ;;
+	5[0-9])     printf '\07%s\01 %s%%\n'    "$CBAT_50"  "$CAPACITY" ;;
+	4[0-9])     printf '\07%s\01 %s%%\n'    "$CBAT_40"  "$CAPACITY" ;;
+	3[0-9])     printf '\07%s\01 %s%%\n'    "$CBAT_30"  "$CAPACITY" ;;
+	2[0-9])     printf '\07%s\01 %s%%\n'    "$CBAT_20"  "$CAPACITY" ;;
+	1[0-9])     printf '\07%s\01 %s%%\n'    "$CBAT_10"  "$CAPACITY" ;;
+	[0-9])      printf '\07%s\06 %s%%\01\n' "$CBAT_0"   "$CAPACITY" ;;
+	esac
+else
+	case $CAPACITY in
+	100)        printf '%s\04 %s%%\01\n' "$BAT_100" "$CAPACITY"  ;;
+	9[0-9])     printf '%s\04 %s%%\01\n' "$BAT_90"  "$CAPACITY"  ;;
+	8[0-9])     printf '%s %s%%\n'       "$BAT_80"  "$CAPACITY"  ;;
+	7[0-9])     printf '%s %s%%\n'       "$BAT_70"  "$CAPACITY"  ;;
+	6[0-9])     printf '%s %s%%\n'       "$BAT_60"  "$CAPACITY"  ;;
+	5[0-9])     printf '%s %s%%\n'       "$BAT_50"  "$CAPACITY"  ;;
+	4[0-9])     printf '%s %s%%\n'       "$BAT_40"  "$CAPACITY"  ;;
+	3[0-9])     printf '%s\07 %s%%\01\n' "$BAT_30"  "$CAPACITY"  ;;
+	2[0-9])     printf '%s\05 %s%%\01\n' "$BAT_20"  "$CAPACITY"  ;;
+	1[0-9])     printf '%s\06 %s%%\01\n' "$BAT_10"  "$CAPACITY"
+		notify-send "$BAT_10 $CAPACITY% Battery low" ;;
+	[0-9])      printf '%s\06 %s%%\01\n' "$BAT_0"   "$CAPACITY"
+		notify-send "$BAT_0 $CAPACITY% Battery VERY LOW" ;;
+	esac
+fi

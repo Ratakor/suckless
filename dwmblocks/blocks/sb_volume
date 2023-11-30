@@ -1,0 +1,22 @@
+#!/bin/sh
+
+trim() {
+	set -f
+	old_ifs=$IFS
+	IFS="Volume: .[MUTED]"
+	# shellcheck disable=SC2086
+	set -- $1
+	IFS=
+	printf '%s\n' "$*"
+	IFS=$old_ifs
+	set +f
+}
+
+VOL="$(wpctl get-volume @DEFAULT_AUDIO_SINK@)"
+
+case $VOL in
+*MUTED*)
+	printf '\05 %.0f%%\01\n' "$(trim "$VOL")" ;;
+*)
+	printf ' %.0f%%\n' "$(trim "$VOL")" ;;
+esac

@@ -1,0 +1,4 @@
+#!/bin/sh
+ICON=
+STATUS=$(ip link | awk '/eth0/ { print $9 }')
+[ "$STATUS"  = "UP" ] && printf '%s\n' "$ICON"

@@ -1,0 +1,7 @@
+#!/bin/sh
+ICON_MUTED=''
+ICON_UNMUTED=''
+
+wpctl get-volume @DEFAULT_SOURCE@ | grep -q MUTED &&
+	printf '\05%s\01\n' "$ICON_MUTED" ||
+	printf '%s\n' "$ICON_UNMUTED"

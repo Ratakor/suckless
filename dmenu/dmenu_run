@@ -1,0 +1,13 @@
+#!/bin/sh
+# command ending with '!', is started in the terminal.
+
+cmd="$(dmenu_path | dmenu "$@")"
+
+[ -z "$cmd" ] && exit 1
+
+case $cmd in
+*\!)
+	"${TERMINAL:-st}" -e "${cmd%?}" & ;;
+*)
+	"${cmd}" & ;;
+esac
