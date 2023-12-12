@@ -17,10 +17,10 @@ clean:
 
 install: all
 	mkdir -p ${DESTDIR}${PREFIX}/bin
-	cp -f sb ${DESTDIR}${PREFIX}/bin
-	chmod 755 ${DESTDIR}${PREFIX}/bin/sb
+	cp -f sb sbcmd ${DESTDIR}${PREFIX}/bin
+	chmod 755 ${DESTDIR}${PREFIX}/bin/sb ${DESTDIR}${PREFIX}/bin/sbcmd
 
 uninstall:
-	rm -f ${DESTDIR}${PREFIX}/bin/sb
+	rm -f ${DESTDIR}${PREFIX}/bin/sb ${DESTDIR}${PREFIX}/bin/sbcmd
 
 .PHONY: all clean install uninstall
