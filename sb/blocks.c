@@ -31,6 +31,7 @@
 #define NETSPEED_TX(X) "/sys/class/net/" X "/statistics/tx_bytes"
 #define MUSIC_PAUSE    "{\"command\":[\"get_property_string\",\"pause\"]}\n"
 #define MUSIC_TITLE    "{\"command\":[\"get_property\",\"media-title\"]}\n"
+#define MUSIC_SOCKET   "music.sock"
 
 #if BASE == 1000
 static const char *const prefix[] = {
@@ -47,17 +48,23 @@ static const char *const prefix[] = {
 int
 music(char *output)
 {
-	static const struct sockaddr_un addr = {
-		.sun_path = "/tmp/mpvsocket",
+	struct sockaddr_un addr = {
+		.sun_path = "/tmp/" MUSIC_SOCKET,
 		.sun_family = AF_UNIX
 	};
 	static const char *const properties[] = { MUSIC_PAUSE, MUSIC_TITLE };
-	char buf[2 * OUTPUT_MAX], *start, *end;
+	char buf[2 * OUTPUT_MAX], *start, *end, *xdg_runtime_dir;
 	ssize_t len;
 	int i, fd;
 	bool pause;
 
-	for (i = 0; i < 2; i++) {
+	xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
+	if (xdg_runtime_dir != NULL) {
+		xsnprintf(addr.sun_path, sizeof(addr.sun_path),
+		          "%s/" MUSIC_SOCKET, xdg_runtime_dir);
+	}
+
+	for (i = 0; i < LENGTH(properties); i++) {
 		if ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) < 0) {
 			warn("socket:");
 			close(fd);
