@@ -21,12 +21,12 @@
 
 typedef struct {
 	const char *name;
-	int (*func)(char *);
+	int (*func)(char *, bool);
 	int active;
 	unsigned int interval;
 } Block;
 
-static void run(Block *block);
+static void run(Block *block, bool signal);
 static void *blockloop(void *block);
 static void statusloop(void);
 static void sighandler(int sig);
@@ -45,13 +45,13 @@ static volatile sig_atomic_t restart;
 static bool pflag;
 
 void
-run(Block *block)
+run(Block *block, bool signal)
 {
 	char output[CMDLENGTH] = "";
 	size_t len, i = block - blocks;
 	int rv;
 
-	if ((rv = block->func(output)) < 0)
+	if ((rv = block->func(output, signal)) < 0)
 		return;
 
 	len = rv;
@@ -87,13 +87,13 @@ blockloop(void *block)
 {
 	unsigned int interval = ((Block *)block)->interval;
 
-	run(block);
+	run(block, false);
 	if (interval == 0)
 		pthread_exit(NULL);
 
 	while (running) {
 		sleep(interval);
-		run(block);
+		run(block, false);
 	}
 	pthread_exit(NULL);
 }
@@ -128,6 +128,7 @@ sighandler(int sig)
 	switch (sig) {
 	case RESTARTSIG:
 		restart = true;
+		/* FALLTHROUGH */
 	case SIGTERM:
 	case SIGINT:
 	case SIGHUP:
@@ -135,7 +136,7 @@ sighandler(int sig)
 		break;
 	default:
 		if (blocks[sig - SIGRTMIN].active)
-			run(blocks + sig - SIGRTMIN);
+			run(blocks + sig - SIGRTMIN, true);
 	}
 }
 
@@ -160,28 +161,35 @@ getcfg(void)
 		return;
 	}
 
-	for (lc = 1; fgets(line, sizeof(line), fp); lc++) {
-		if (line[0] == '\n' || line[0] == '#')
-			continue;
-		p = strchr(line, '#');
-		if (p != NULL) *p = '\0';
-		key = line;
-		p = strchr(line, '=');
-		if (p == NULL) die(1, "%s:%d: missing '='", path, lc);
-		val = atob(p + 1);
-		if (val < 0) die(1, "%s:%d: wrong value", path, lc);
-		for (p = key; isalpha(*p); p++);
-		*p = '\0';
-
-		for (i = 0; i < LENGTH(blocks); i++) {
-			if (streql(key, blocks[i].name)) {
-				blocks[i].active = val;
-				break;
-			}
-		}
+	lc = 0;
+loop:
+	lc++;
+	p = fgets(line, sizeof(line), fp);
+	if (p == NULL) {
+		fclose(fp);
+		return;
 	}
 
-	fclose(fp);
+	while (isspace(*p)) p++;
+	if (*p == '\0' || *p == '#')
+		goto loop;
+	key = p;
+	p = strchr(p, '#');
+	if (p != NULL) *p = '\0';
+	p = strchr(line, '=');
+	if (p == NULL) die(1, "%s:%d: missing '='", path, lc);
+	val = atob(p + 1);
+	if (val < 0) die(1, "%s:%d: wrong value", path, lc);
+	for (p = key; isalpha(*p); p++);
+	*p = '\0';
+
+	for (i = 0; i < LENGTH(blocks); i++) {
+		if (streql(key, blocks[i].name)) {
+			blocks[i].active = val;
+			goto loop;
+		}
+	}
+	die(1, "%s:%d: wrong name: %s", path, lc, key);
 }
 
 void

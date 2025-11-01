@@ -1,7 +1,7 @@
 PREFIX  ?= /usr/local
 
 OBJ      = sb.o blocks.o util.o
-CFLAGS  += -O3 -std=c99 -pedantic -Wall -Werror -D_DEFAULT_SOURCE
+CFLAGS  += -O3 -std=c99 -pedantic -Wall -Wextra -Werror -D_DEFAULT_SOURCE
 LDFLAGS += -s -lX11 -lpthread
 
 all: sb

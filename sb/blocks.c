@@ -46,7 +46,7 @@ static const char *const prefix[] = {
 #endif /* BASE */
 
 int
-music(char *output)
+music(char *output, bool signal)
 {
 	struct sockaddr_un addr = {
 		.sun_path = "/tmp/" MUSIC_SOCKET,
@@ -55,8 +55,11 @@ music(char *output)
 	static const char *const properties[] = { MUSIC_PAUSE, MUSIC_TITLE };
 	char buf[2 * OUTPUT_MAX], *start, *end, *xdg_runtime_dir;
 	ssize_t len;
-	int i, fd;
+	size_t i;
+	int fd;
 	bool pause;
+
+	(void)signal;
 
 	xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
 	if (xdg_runtime_dir != NULL) {
@@ -109,9 +112,11 @@ music(char *output)
 }
 
 int
-cputemp(char *output)
+cputemp(char *output, bool signal)
 {
 	intmax_t temp;
+
+	(void)signal;
 
 	temp = fgetsn(CPUTEMP_PATH);
 	if (temp <= 0)
@@ -124,11 +129,13 @@ cputemp(char *output)
 }
 
 int
-cpu(char *output)
+cpu(char *output, bool signal)
 {
 	static long double a[7];
 	long double b[7], sum;
 	FILE *fp;
+
+	(void)signal;
 
 	memcpy(b, a, sizeof(b));
 	if ((fp = fopen("/proc/stat", "r")) == NULL) {
@@ -157,12 +164,14 @@ cpu(char *output)
 }
 
 int
-memory(char *output)
+memory(char *output, bool signal)
 {
 	FILE *fp;
 	uintmax_t total, free, buffers, cached;
 	double dtotal, used;
 	size_t i, j;
+
+	(void)signal;
 
 	if ((fp = fopen("/proc/meminfo", "r")) == NULL) {
 		warn("fopen '%s':", "/proc/meminfo");
@@ -170,10 +179,10 @@ memory(char *output)
 	}
 
 	if (fscanf(fp, "MemTotal: %ju kB\n"
-	                "MemFree: %ju kB\n"
-	                "MemAvailable: %ju kB\n"
-	                "Buffers: %ju kB\n"
-	                "Cached: %ju kB\n",
+	               "MemFree: %ju kB\n"
+	               "MemAvailable: %ju kB\n"
+	               "Buffers: %ju kB\n"
+	               "Cached: %ju kB\n",
 	                &total, &free, &buffers, &buffers, &cached) != 5) {
 		fclose(fp);
 		return -1;
@@ -192,7 +201,7 @@ memory(char *output)
 }
 
 int
-battery(char *output)
+battery(char *output, bool signal)
 {
 	static const char *const icons[] = {
 		"󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹",
@@ -203,6 +212,8 @@ battery(char *output)
 	char status[32];
 	intmax_t capacity;
 	bool charging;
+
+	(void)signal;
 
 	if ((capacity = fgetsn(CAPACITY_PATH)) < 0)
 		return -1;
@@ -240,9 +251,9 @@ battery(char *output)
 }
 
 int
-wifi(char *output)
+wifi(char *output, bool signal)
 {
-	char ssid[IW_ESSID_MAX_SIZE + 1] = "";
+	char ssid[IW_ESSID_MAX_SIZE + 1] = {0};
 	const struct iwreq wreq = {
 		.ifr_name = WIFI,
 		.u.essid.length = sizeof(ssid),
@@ -251,6 +262,8 @@ wifi(char *output)
 	FILE *fp;
 	char buf[128], *p;
 	int i, fd, quality;
+
+	(void)signal;
 
 	if ((fp = fopen(OPERSTATE(WIFI), "r")) == NULL) {
 		warn("fopen '%s':", OPERSTATE(WIFI));
@@ -296,13 +309,15 @@ wifi(char *output)
 }
 
 int
-netspeed(char *output)
+netspeed(char *output, bool signal)
 {
 	static intmax_t rx, tx;
 	static const char *pathrx, *pathtx;
 	intmax_t tmprx, tmptx;
 	double drx, dtx;
 	size_t i, j;
+
+	(void)signal;
 
 	if (tx == 0 && rx == 0) {
 		FILE *fp;
@@ -351,11 +366,13 @@ netspeed(char *output)
 }
 
 int
-localip(char *output)
+localip(char *output, bool signal)
 {
 	struct ifaddrs *ifaddr, *ifa;
 	char host[NI_MAXHOST];
 	int s;
+
+	(void)signal;
 
 	if (getifaddrs(&ifaddr) < 0) {
 		warn("getifaddrs:");
@@ -385,9 +402,11 @@ localip(char *output)
 }
 
 int
-publicip(char *output)
+publicip(char *output, bool signal)
 {
 	char buf[32];
+
+	(void)signal;
 
 	if (execcmd(buf, sizeof(buf), "curl -s " PUBLICIP_URL) < 0)
 		return -1;
@@ -396,10 +415,12 @@ publicip(char *output)
 }
 
 int
-volume(char *output)
+volume(char *output, bool signal)
 {
 	char buf[32];
 	int vol;
+
+	(void)signal;
 
 	if (execcmd(buf, sizeof(buf), VOLUME_CMD) < 0)
 		return -1;
@@ -412,9 +433,11 @@ volume(char *output)
 }
 
 int
-mic(char *output)
+mic(char *output, bool signal)
 {
 	char buf[32];
+
+	(void)signal;
 
 	if (execcmd(buf, sizeof(buf), MIC_CMD) < 0)
 		return -1;
@@ -425,9 +448,11 @@ mic(char *output)
 }
 
 int
-news(char *output)
+news(char *output, bool signal)
 {
 	char buf[32];
+
+	(void)signal;
 
 	if (execcmd(buf, sizeof(buf), NEWS_CMD) < 0)
 		return -1;
@@ -438,10 +463,12 @@ news(char *output)
 }
 
 int
-weather(char *output)
+weather(char *output, bool signal)
 {
 	char buf[32];
 	int i, j;
+
+	(void)signal;
 
 	if (execcmd(buf, sizeof(buf), "curl -s " WEATHER_URL) < 0)
 		return -1;
@@ -456,6 +483,7 @@ weather(char *output)
 		case '+':
 		case '-':
 			output[j++] = ' ';
+			/* FALLTHROUGH */
 		default:
 			output[j++] = buf[i];
 			continue;
@@ -467,24 +495,24 @@ weather(char *output)
 }
 
 int
-daypercent(char *output)
+daypercent(char *output, bool signal)
 {
 	time_t t;
 	int percent;
 
-	t = ltime();
+	t = ltime(signal);
 	percent = ((HOUR(t) * 60 + MINUTE(t)) * 100) / 1440;
 
 	return xsnprintf(output, OUTPUT_MAX, " %d%%", percent);
 }
 
 int
-date(char *output)
+date(char *output, bool signal)
 {
 	time_t t;
 	size_t rv;
 
-	t = ltime();
+	t = ltime(signal);
 	rv = strftime(output, OUTPUT_MAX, " %b %d (%a)", gmtime(&t));
 	if (rv == 0) {
 		warn("strftime: String truncation");
@@ -494,11 +522,11 @@ date(char *output)
 }
 
 int
-sb_time(char *output)
+sb_time(char *output, bool signal)
 {
 	time_t t;
 
-	t = ltime();
+	t = ltime(signal);
 	if (HOUR(t) >= 22) {
 		return xsnprintf(output, OUTPUT_MAX, ORANGE" %02d:%02d"NORM,
 		                 HOUR(t), MINUTE(t));

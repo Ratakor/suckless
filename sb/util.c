@@ -55,12 +55,12 @@ die(int status, const char *fmt, ...)
 }
 
 time_t
-ltime(void)
+ltime(bool reload)
 {
 	static time_t tz;
 	static bool once;
 
-	if (!once) {
+	if (!once || reload) {
 		const time_t t = time(NULL);
 		const struct tm *const tm = localtime(&t);
 		time_t tz_hour, tz_min;

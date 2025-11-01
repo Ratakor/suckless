@@ -22,19 +22,19 @@
 #define CYAN         ""
 #endif /* COLORS */
 
-int music(char *output);
-int cputemp(char *output);
-int cpu(char *output);
-int memory(char *output);
-int battery(char *output);
-int wifi(char *output);
-int netspeed(char *output);
-int localip(char *output);
-int publicip(char *output);
-int volume(char *output);
-int mic(char *output);
-int news(char *output);
-int weather(char *output);
-int daypercent(char *output);
-int date(char *output);
-int sb_time(char *output);
+int music(char *output, bool signal);
+int cputemp(char *output, bool signal);
+int cpu(char *output, bool signal);
+int memory(char *output, bool signal);
+int battery(char *output, bool signal);
+int wifi(char *output, bool signal);
+int netspeed(char *output, bool signal);
+int localip(char *output, bool signal);
+int publicip(char *output, bool signal);
+int volume(char *output, bool signal);
+int mic(char *output, bool signal);
+int news(char *output, bool signal);
+int weather(char *output, bool signal);
+int daypercent(char *output, bool signal);
+int date(char *output, bool signal);
+int sb_time(char *output, bool signal);
